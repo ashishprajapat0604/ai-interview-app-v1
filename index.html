@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Interviewer - Pro</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --success: #10b981;
+            --danger: #ef4444;
+            --danger-hover: #dc2626;
+            --bg-color: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #e0e7ff 0%, #f3f4f6 100%);
+            padding: 20px;
+        }
+
+        .container {
+            background: var(--card-bg);
+            padding: 40px;
+            border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.05);
+            max-width: 540px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h2 { margin: 0 0 5px 0; color: var(--text-main); font-weight: 800; letter-spacing: -0.5px;}
+        
+        /* Progress Bar */
+        .progress-header { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-muted); font-weight: 600; margin-bottom: 8px; margin-top: 25px;}
+        .progress-track { width: 100%; height: 8px; background: #e5e7eb; border-radius: 10px; overflow: hidden; margin-bottom: 25px; }
+        .progress-fill { height: 100%; background: var(--success); width: 0%; transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+
+        /* Navigation Grid */
+        .nav-grid { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 30px; }
+        .nav-btn {
+            width: 36px; height: 36px; border-radius: 12px;
+            border: 2px solid #e5e7eb; background: transparent;
+            color: var(--text-muted); font-weight: 700; font-size: 14px;
+            cursor: pointer; transition: all 0.2s;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .nav-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+        .nav-btn.active { background: var(--primary); border-color: var(--primary); color: white; transform: scale(1.05); box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3); }
+        .nav-btn.completed { background: #d1fae5; border-color: var(--success); color: var(--success); }
+        .nav-btn.completed.active { background: var(--success); color: white; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3); }
+        .nav-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Question Area */
+        .question-box {
+            background: #f8fafc; padding: 25px; border-radius: 16px;
+            border: 1px solid #e2e8f0; border-left: 5px solid var(--primary);
+            margin-bottom: 25px; text-align: left; transition: all 0.3s ease;
+        }
+        .question-label { font-size: 12px; color: var(--primary); text-transform: uppercase; font-weight: 800; margin-bottom: 8px; letter-spacing: 0.5px; }
+        .question-text { font-size: 19px; color: var(--text-main); margin: 0; line-height: 1.5; font-weight: 500; }
+
+        /* Visualizer */
+        .visualizer-container {
+            position: relative; width: 100%; height: 70px;
+            background-color: #111827; border-radius: 12px;
+            margin-bottom: 20px; overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: inset 0 4px 6px rgba(0,0,0,0.3);
+        }
+        #micVisualizer { width: 100%; height: 100%; }
+        .visualizer-container::after {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            box-shadow: inset 0 0 20px rgba(16, 185, 129, 0.2); pointer-events: none;
+            opacity: 0; transition: opacity 0.3s;
+        }
+        .visualizer-container.recording::after { opacity: 1; }
+
+        /* Controls */
+        .controls-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 0 5px; }
+        #status { font-size: 14px; color: var(--text-muted); font-weight: 500; }
+        #timer { font-family: 'Courier New', monospace; font-size: 18px; font-weight: bold; color: var(--text-main); background: #f3f4f6; padding: 6px 14px; border-radius: 8px; }
+        #timer.recording { color: var(--danger); background: #fee2e2; animation: pulse-text 1.5s infinite; }
+
+        /* Main Button */
+        .record-btn {
+            background-color: var(--primary); color: white; border: none;
+            padding: 18px 36px; font-size: 16px; font-weight: 700;
+            border-radius: 50px; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex; align-items: center; justify-content: center; gap: 10px; width: 100%;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+        }
+        .record-btn:hover:not(:disabled) { background-color: var(--primary-hover); transform: translateY(-2px); box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4); }
+        .record-btn.recording { background-color: var(--danger); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4); }
+        .record-btn.recording:hover { background-color: var(--danger-hover); }
+        .record-btn:disabled { background-color: #d1d5db; color: #9ca3af; box-shadow: none; cursor: not-allowed; transform: none; }
+        .icon { width: 20px; height: 20px; fill: currentColor; }
+
+        @keyframes pulse-text { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>AI Interview System</h2>
+        
+        <div class="progress-header">
+            <span>Interview Progress</span>
+            <span id="progressText">0/10 Completed</span>
+        </div>
+        <div class="progress-track">
+            <div class="progress-fill" id="progressBar"></div>
+        </div>
+
+        <div class="nav-grid" id="navGrid">
+            </div>
+        
+        <div id="interviewArea">
+            <div class="question-box">
+                <div class="question-label" id="qLabel">Question 1</div>
+                <p class="question-text" id="qText">Loading...</p>
+            </div>
+            
+            <div class="visualizer-container" id="vizContainer">
+                <canvas id="micVisualizer"></canvas>
+            </div>
+            
+            <div class="controls-row">
+                <div id="status">Ready to record</div>
+                <div id="timer">00:00</div>
+            </div>
+            
+            <button class="record-btn" id="recordBtn">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+                <span id="btnText">Start Recording</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- IMPORTANT: PASTE YOUR N8N WEBHOOK URL HERE ---
+        const N8N_WEBHOOK_URL = 'https://ashishprajapat0604.app.n8n.cloud/webhook/submit-interview-audio';
+
+        const interviewQuestions = [
+            "Tell me about yourself and your background.",
+            "Why do you want to work for this company?",
+            "What do you consider to be your greatest strength?",
+            "Describe a time you faced a challenge at work and how you overcame it.",
+            "Where do you see yourself in five years?",
+            "How do you handle tight deadlines and high-pressure situations?",
+            "Can you give an example of a time you worked well in a team?",
+            "What is your greatest professional achievement?",
+            "How do you handle constructive criticism?",
+            "Do you have any questions for us?"
+        ];
+
+        let currentQIndex = 0;
+        let completedQuestions = new Set(); // Tracks which questions are done
+        
+        // Audio & DOM Variables
+        let mediaRecorder, audioChunks = [], audioStream;
+        let audioCtx, analyser, dataArray, canvasCtx, animationId;
+        let timerInterval, secondsRecorded = 0;
+
+        const recordBtn = document.getElementById('recordBtn');
+        const btnText = document.getElementById('btnText');
+        const statusText = document.getElementById('status');
+        const timerDisplay = document.getElementById('timer');
+        const qLabel = document.getElementById('qLabel');
+        const qText = document.getElementById('qText');
+        const canvas = document.getElementById('micVisualizer');
+        const vizContainer = document.getElementById('vizContainer');
+        const navGrid = document.getElementById('navGrid');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        canvasCtx = canvas.getContext('2d');
+
+        // Initialize UI
+        function resizeCanvas() { canvas.width = vizContainer.clientWidth; canvas.height = vizContainer.clientHeight; }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function buildNavigation() {
+            navGrid.innerHTML = '';
+            interviewQuestions.forEach((_, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'nav-btn';
+                btn.textContent = index + 1;
+                
+                // Set states
+                if (index === currentQIndex) btn.classList.add('active');
+                if (completedQuestions.has(index)) btn.classList.add('completed');
+                
+                btn.onclick = () => jumpToQuestion(index);
+                navGrid.appendChild(btn);
+            });
+            
+            // Update Progress Bar
+            const percent = (completedQuestions.size / interviewQuestions.length) * 100;
+            progressBar.style.width = `${percent}%`;
+            progressText.textContent = `${completedQuestions.size}/${interviewQuestions.length} Completed`;
+        }
+
+        function jumpToQuestion(index) {
+            // Prevent jumping while recording
+            if (mediaRecorder && mediaRecorder.state === 'recording') return; 
+            
+            currentQIndex = index;
+            updateQuestionUI();
+        }
+
+        function updateQuestionUI() {
+            buildNavigation(); // Refresh nav buttons
+            qLabel.textContent = `Question ${currentQIndex + 1}`;
+            qText.textContent = interviewQuestions[currentQIndex];
+            
+            if (completedQuestions.has(currentQIndex)) {
+                statusText.textContent = 'You have already answered this question. You can re-record if you want.';
+                statusText.style.color = 'var(--success)';
+            } else {
+                statusText.textContent = 'Ready to record';
+                statusText.style.color = 'var(--text-muted)';
+            }
+        }
+
+        // Initialize First View
+        updateQuestionUI();
+
+        // Timer Logic
+        function updateTimer() {
+            secondsRecorded++;
+            const mins = Math.floor(secondsRecorded / 60).toString().padStart(2, '0');
+            const secs = (secondsRecorded % 60).toString().padStart(2, '0');
+            timerDisplay.textContent = `${mins}:${secs}`;
+        }
+
+        // Button Logic
+        recordBtn.addEventListener('click', async () => {
+            if (!mediaRecorder || mediaRecorder.state === 'inactive') { startRecording(); } 
+            else if (mediaRecorder.state === 'recording') { stopRecording(); }
+        });
+
+        async function startRecording() {
+            try {
+                audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(audioStream);
+                audioChunks = [];
+                
+                mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    // Send both text and the Question ID number to n8n
+                    await sendToN8n(audioBlob, interviewQuestions[currentQIndex], currentQIndex + 1);
+                };
+                
+                setupVisualizer(audioStream);
+                mediaRecorder.start();
+                
+                secondsRecorded = 0;
+                timerDisplay.textContent = "00:00";
+                timerDisplay.classList.add('recording');
+                timerInterval = setInterval(updateTimer, 1000);
+                
+                btnText.textContent = 'Stop & Submit';
+                recordBtn.classList.add('recording');
+                vizContainer.classList.add('recording');
+                statusText.textContent = 'Recording... Speak clearly.';
+                statusText.style.color = 'var(--danger)';
+                
+                // Disable navigation while recording
+                document.querySelectorAll('.nav-btn').forEach(btn => btn.disabled = true);
+            } catch (err) { statusText.textContent = 'Microphone access denied.'; statusText.style.color = 'var(--danger)'; }
+        }
+
+        function stopRecording() {
+            mediaRecorder.stop();
+            if (audioCtx) audioCtx.close();
+            cancelAnimationFrame(animationId);
+            canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+            audioStream.getTracks().forEach(track => track.stop());
+            
+            clearInterval(timerInterval);
+            timerDisplay.classList.remove('recording');
+            
+            btnText.textContent = 'Uploading...';
+            recordBtn.classList.remove('recording');
+            vizContainer.classList.remove('recording');
+            recordBtn.disabled = true;
+            statusText.textContent = 'Sending to AI safely...';
+            statusText.style.color = 'var(--primary)';
+        }
+
+        // Visualizer Engine
+        function setupVisualizer(stream) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioCtx.createAnalyser();
+            audioCtx.createMediaStreamSource(stream).connect(analyser);
+            analyser.fftSize = 256;
+            dataArray = new Uint8Array(analyser.frequencyBinCount);
+            
+            function draw() {
+                animationId = requestAnimationFrame(draw);
+                analyser.getByteFrequencyData(dataArray);
+                canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+                let barWidth = (canvas.width / dataArray.length) * 2.5, x = 0;
+                for (let i = 0; i < dataArray.length; i++) {
+                    let barHeight = (dataArray[i] / 255) * canvas.height;
+                    // Green to Blue gradient based on height
+                    canvasCtx.fillStyle = `hsl(${150 - (dataArray[i]/255)*60}, 100%, 60%)`;
+                    canvasCtx.fillRect(x, (canvas.height - barHeight)/2, barWidth, barHeight);
+                    x += barWidth + 1;
+                }
+            }
+            draw();
+        }
+
+        // Send to n8n Workflow
+        async function sendToN8n(audioBlob, questionString, questionNumber) {
+            const formData = new FormData();
+            formData.append('file', audioBlob, 'answer.webm');
+            formData.append('questionText', questionString);
+            formData.append('questionId', questionNumber.toString()); // Pass ID to n8n
+
+            try {
+                const response = await fetch(N8N_WEBHOOK_URL, { method: 'POST', body: formData });
+                if (response.ok) {
+                    completedQuestions.add(currentQIndex); // Mark as done
+                    
+                    // Automatically find the next unanswered question
+                    let nextUnanswered = -1;
+                    for(let i = 0; i < interviewQuestions.length; i++) {
+                        if (!completedQuestions.has(i)) {
+                            nextUnanswered = i;
+                            break;
+                        }
+                    }
+
+                    if (nextUnanswered !== -1) {
+                        currentQIndex = nextUnanswered; // Jump to next pending
+                    }
+                    updateQuestionUI();
+                    statusText.textContent = 'Saved successfully!';
+                    statusText.style.color = 'var(--success)';
+                } else {
+                    throw new Error('Upload failed');
+                }
+            } catch (error) {
+                statusText.textContent = 'Network error. Please try submitting again.';
+                statusText.style.color = 'var(--danger)';
+                document.querySelectorAll('.nav-btn').forEach(btn => btn.disabled = false); // Re-enable nav
+            } finally {
+                setTimeout(() => {
+                    recordBtn.disabled = false;
+                    btnText.textContent = 'Start Recording';
+                    if(!completedQuestions.has(currentQIndex)){
+                         statusText.textContent = 'Ready to record';
+                         statusText.style.color = 'var(--text-muted)';
+                    }
+                    timerDisplay.textContent = "00:00";
+                }, 2000);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Interviewer - NextGen</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        /* --- CORE SYSTEM THEME VARIABLES --- */
+        :root {
+            --bg-dark: #070913;
+            --glass-bg: rgba(20, 22, 43, 0.4);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --neon-blue: #00f0ff;
+            --neon-purple: #8a2be2;
+            --neon-red: #ff2a5f;
+            --text-main: #ffffff;
+            --text-muted: #94a3b8;
+            --input-bg: rgba(0, 0, 0, 0.3);
+            --overlay-bg: rgba(7, 9, 19, 0.85);
+            --blob-opacity: 0.6;
+        }
+
+        /* --- LIGHT THEME OVERRIDES --- */
+        body.light-theme {
+            --bg-dark: #f1f5f9;
+            --glass-bg: rgba(255, 255, 255, 0.45);
+            --glass-border: rgba(99, 102, 241, 0.2);
+            --neon-blue: #4f46e5; 
+            --neon-purple: #7c3aed;
+            --neon-red: #ef4444;
+            --text-main: #0f172a;
+            --text-muted: #475569;
+            --input-bg: rgba(255, 255, 255, 0.6);
+            --overlay-bg: rgba(241, 245, 249, 0.9);
+            --blob-opacity: 0.25;
+        }
+
+        /* Smoothly animate variable changes across themes */
+        *, *::before, *::after {
+            transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            margin: 0; min-height: 100vh;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            display: flex; justify-content: center; align-items: center;
+            overflow: hidden; 
+            padding: 20px;
+        }
+
+        /* --- ANIMATED BACKGROUND BLOBS --- */
+        .ambient-bg { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none; }
+        .blob { position: absolute; border-radius: 50%; filter: blur(80px); opacity: var(--blob-opacity); animation: float 10s infinite ease-in-out alternate; }
+        .blob-1 { top: -10%; left: -10%; width: 50vw; height: 50vw; background: var(--neon-purple); animation-delay: 0s; }
+        .blob-2 { bottom: -10%; right: -10%; width: 40vw; height: 40vw; background: var(--neon-blue); animation-delay: -5s; }
+
+        @keyframes float {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(10%, 15%) scale(1.2); }
+        }
+
+        /* --- GLASSMORPHISM PANEL --- */
+        .glass-panel {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-radius: 24px;
+            padding: 40px;
+            width: 100%; max-width: 500px;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.1);
+            position: relative;
+            animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(40px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* --- INTERACTIVE THEME TOGGLE BUTTON --- */
+        .theme-toggle {
+            position: absolute; top: 20px; right: 20px;
+            background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-border);
+            width: 40px; height: 40px; border-radius: 50%;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            font-size: 18px; z-index: 60; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .theme-toggle:hover { transform: scale(1.1); background: rgba(255, 255, 255, 0.15); }
+
+        h2 { 
+            font-weight: 800; font-size: 32px; margin: 0 0 10px 0; text-align: center;
+            background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            letter-spacing: -1px; padding-right: 20px; /* Don't overwrite switcher path */
+        }
+        .subtitle { text-align: center; color: var(--text-muted); margin-bottom: 30px; font-weight: 300; }
+
+        /* --- INPUTS --- */
+        .form-group { margin-bottom: 20px; animation: fadeIn 0.8s ease forwards; opacity: 0; }
+        .form-group:nth-child(2) { animation-delay: 0.1s; }
+        .form-group:nth-child(3) { animation-delay: 0.2s; }
+        
+        label { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--neon-blue); margin-bottom: 8px; font-weight: 600; }
+        input {
+            width: 100%; padding: 16px; box-sizing: border-box;
+            background: var(--input-bg); border: 1px solid var(--glass-border);
+            color: var(--text-main); border-radius: 12px; font-family: inherit; font-size: 16px;
+        }
+        input:focus { outline: none; border-color: var(--neon-blue); box-shadow: 0 0 15px rgba(99, 102, 241, 0.2); }
+
+        /* --- BUTTONS --- */
+        .btn {
+            width: 100%; padding: 18px; border: none; border-radius: 12px;
+            background: linear-gradient(90deg, #1e3a8a, #4c1d95);
+            color: white; font-family: inherit; font-size: 16px; font-weight: 600;
+            cursor: pointer; position: relative; overflow: hidden;
+            margin-top: 10px; box-shadow: 0 8px 20px rgba(138, 43, 226, 0.25);
+        }
+        body.light-theme .btn { background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple)); }
+        .btn::before {
+            content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s ease;
+        }
+        .btn:hover::before { left: 100%; }
+        .btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 12px 25px rgba(99, 102, 241, 0.4); }
+        
+        .btn.recording {
+            background: rgba(255, 42, 95, 0.1); border: 1px solid var(--neon-red);
+            box-shadow: 0 0 20px rgba(255, 42, 95, 0.4); color: var(--neon-red);
+            animation: pulse-danger 1.5s infinite alternate;
+        }
+
+        .btn:disabled { background: rgba(0,0,0,0.05); color: var(--text-muted); box-shadow: none; cursor: not-allowed; border: 1px solid var(--glass-border); }
+
+        .finish-early-btn {
+            background: none; border: none; color: var(--text-muted); width: 100%;
+            margin-top: 15px; font-family: inherit; font-size: 13px; cursor: pointer;
+        }
+        .finish-early-btn:hover { color: var(--neon-red); }
+
+        /* --- INTERVIEW COMPONENTS --- */
+        #interviewArea { display: none; opacity: 0; animation: fadeIn 0.5s ease forwards; }
+        
+        .progress-bar-bg { width: 100%; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; margin-bottom: 30px; overflow: hidden; }
+        body.light-theme .progress-bar-bg { background: rgba(0,0,0,0.05); }
+        .progress-fill { height: 100%; background: var(--neon-blue); width: 0%; transition: width 0.4s ease; box-shadow: 0 0 10px var(--neon-blue); }
+
+        .question-card {
+            background: rgba(0,0,0,0.15); border: 1px solid var(--glass-border);
+            padding: 25px; border-radius: 16px; margin-bottom: 25px; text-align: left;
+        }
+        body.light-theme .question-card { background: rgba(255,255,255,0.4); }
+        .q-label { font-size: 12px; color: var(--neon-purple); letter-spacing: 2px; text-transform: uppercase; font-weight: 800; margin-bottom: 10px; }
+        .q-text { font-size: 20px; font-weight: 500; margin: 0; line-height: 1.4; }
+
+        /* Visualizer */
+        .visualizer-box {
+            height: 60px; background: rgba(0,0,0,0.25); border-radius: 12px; margin-bottom: 20px;
+            border: 1px solid var(--glass-border); overflow: hidden; display: flex; align-items: center;
+        }
+        body.light-theme .visualizer-box { background: rgba(255,255,255,0.5); }
+        #micVisualizer { width: 100%; height: 100%; }
+
+        .status-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; font-size: 14px; }
+        #timer { font-family: monospace; font-size: 18px; color: var(--neon-blue); font-weight: bold; background: rgba(99,102,241,0.1); padding: 5px 10px; border-radius: 6px; }
+        #timer.warning { color: var(--neon-red); background: rgba(255,42,95,0.1); animation: flash 1s infinite; }
+
+        /* --- SYSTEM OVERLAYS --- */
+        #savingOverlay {
+            position: absolute; inset: 0; background: var(--overlay-bg); backdrop-filter: blur(10px);
+            display: none; flex-direction: column; justify-content: center; align-items: center;
+            border-radius: 24px; z-index: 50;
+        }
+        .neon-spinner {
+            width: 60px; height: 60px; border: 3px solid transparent; border-top-color: var(--neon-blue); border-right-color: var(--neon-purple);
+            border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;
+            filter: drop-shadow(0 0 5px var(--neon-blue));
+        }
+
+        .success-icon {
+            font-size: 50px; margin-bottom: 20px;
+            background: linear-gradient(45deg, var(--neon-blue), var(--success));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes fadeIn { to { opacity: 1; } }
+        @keyframes pulse-danger { to { box-shadow: 0 0 30px rgba(255, 42, 95, 0.6); } }
+        @keyframes flash { 50% { opacity: 0.5; } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes popIn { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+    </style>
+</head>
+<body>
+
+    <div class="ambient-bg">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+    </div>
+
+    <div class="glass-panel">
+        
+        <button id="themeToggleBtn" class="theme-toggle" title="Toggle UI Theme">🌙</button>
+        
+        <div id="savingOverlay">
+            <div class="neon-spinner"></div>
+            <h3 style="color: var(--text-main); font-weight: 600; margin:0; letter-spacing: 1px;">Processing Audio</h3>
+            <p style="color: var(--text-muted); font-size: 13px; margin-top: 5px;">Encrypting and analyzing response...</p>
+        </div>
+
+        <div id="registrationArea">
+            <h2 class="stagger-1">AI Interviewer</h2>
+            <p class="subtitle stagger-1">Initialize your session. You have 90 seconds per node.</p>
+            
+            <div class="form-group">
+                <label>Candidate Designation (Name)</label>
+                <input type="text" id="userName" placeholder="Enter full name" required>
+            </div>
+            <div class="form-group">
+                <label>Communication Uplink (Email)</label>
+                <input type="email" id="userEmail" placeholder="Enter email address" required>
+            </div>
+            <button class="btn" id="startInterviewBtn">Initialize Session</button>
+        </div>
+
+        <div id="interviewArea">
+            <div class="progress-bar-bg"><div class="progress-fill" id="progressBar"></div></div>
+            
+            <div class="question-card">
+                <div class="q-label" id="qLabel">Node 01 / 10</div>
+                <p class="q-text" id="qText">Loading data module...</p>
+            </div>
+            
+            <div class="visualizer-box"><canvas id="micVisualizer"></canvas></div>
+            
+            <div class="status-row">
+                <div id="status" style="color: var(--text-muted);">Awaiting Voice Input...</div>
+                <div id="timer">01:30</div>
+            </div>
+            
+            <button class="btn" id="recordBtn"><span id="btnText">Engage Microphone</span></button>
+            <button class="finish-early-btn" id="finishEarlyBtn">Terminate Session Early & Submit</button>
+        </div>
+    </div>
+
+    <script>
+        const AUDIO_WEBHOOK_URL = 'https://ashishprajapat0604.app.n8n.cloud/webhook/voice-to-text-to-sheet-store'; 
+        const EMAIL_WEBHOOK_URL = 'https://ashishprajapat0604.app.n8n.cloud/webhook/v2-emailer';
+        
+        const interviewQuestions = [
+            "Tell me about yourself and your background.",
+            "Why do you want to work for this company?",
+            "What do you consider to be your greatest strength?",
+            "Describe a time you faced a challenge at work and how you overcame it.",
+            "Where do you see yourself in five years?",
+            "How do you handle tight deadlines and high-pressure situations?",
+            "Can you give an example of a time you worked well in a team?",
+            "What is your greatest professional achievement?",
+            "How do you handle constructive criticism?",
+            "Do you have any questions for us?"
+        ];
+
+        let currentQIndex = 0;
+        let userData = { name: '', email: '', sessionId: '' };
+        
+        let mediaRecorder, audioChunks = [], audioStream, audioCtx, analyser, dataArray, canvasCtx, animationId;
+        
+        let timerInterval;
+        const TIME_LIMIT_SECONDS = 90;
+        let timeRemaining = TIME_LIMIT_SECONDS;
+
+        // --- THEME ENGINE RUNTIME ---
+        const themeBtn = document.getElementById('themeToggleBtn');
+        themeBtn.addEventListener('click', () => {
+            document.body.classList.toggle('light-theme');
+            themeBtn.textContent = document.body.classList.contains('light-theme') ? '☀️' : '🌙';
+        });
+
+        const canvas = document.getElementById('micVisualizer');
+        canvasCtx = canvas.getContext('2d');
+        function resizeCanvas() { canvas.width = canvas.clientWidth; canvas.height = canvas.clientHeight; }
+        window.addEventListener('resize', resizeCanvas);
+
+        document.getElementById('startInterviewBtn').addEventListener('click', () => {
+            const name = document.getElementById('userName').value.trim();
+            const email = document.getElementById('userEmail').value.trim();
+            
+            if(!name || !email) { alert("Please input required credentials."); return; }
+            
+            userData.name = name;
+            userData.email = email;
+            userData.sessionId = 'sess_' + Math.random().toString(36).substr(2, 8);
+            
+            document.getElementById('registrationArea').style.display = 'none';
+            document.getElementById('interviewArea').style.display = 'block';
+            resizeCanvas();
+            updateUI();
+        });
+
+        function updateUI() {
+            document.getElementById('qLabel').textContent = `Node ${String(currentQIndex + 1).padStart(2, '0')} / 10`;
+            document.getElementById('qText').textContent = interviewQuestions[currentQIndex];
+            document.getElementById('progressBar').style.width = `${(currentQIndex / interviewQuestions.length) * 100}%`;
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+            const secs = (seconds % 60).toString().padStart(2, '0');
+            return `${mins}:${secs}`;
+        }
+
+        function updateTimer() {
+            timeRemaining--;
+            const timerElement = document.getElementById('timer');
+            timerElement.textContent = formatTime(timeRemaining);
+
+            if (timeRemaining <= 15) { timerElement.classList.add('warning'); }
+
+            if (timeRemaining <= 0) {
+                clearInterval(timerInterval);
+                stopAndProcessRecording();
+            }
+        }
+
+        const recordBtn = document.getElementById('recordBtn');
+        recordBtn.addEventListener('click', async () => {
+            if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+                startRecording();
+            } else if (mediaRecorder.state === 'recording') {
+                stopAndProcessRecording();
+            }
+        });
+
+        async function startRecording() {
+            try {
+                audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(audioStream);
+                audioChunks = [];
+                
+                mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    await sendAudio(audioBlob);
+                };
+                
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioCtx.createAnalyser();
+                audioCtx.createMediaStreamSource(audioStream).connect(analyser);
+                analyser.fftSize = 256;
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
+                
+                function draw() {
+                    animationId = requestAnimationFrame(draw);
+                    analyser.getByteFrequencyData(dataArray);
+                    canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+                    let bw = (canvas.width / dataArray.length) * 2.5, x = 0;
+                    
+                    // Adapt visualizer color system to active runtime theme
+                    let isLight = document.body.classList.contains('light-theme');
+                    
+                    for (let i=0; i<dataArray.length; i++) {
+                        let bh = (dataArray[i] / 255) * canvas.height;
+                        canvasCtx.fillStyle = isLight ? `rgba(79, 70, 229, ${dataArray[i]/255})` : `rgba(0, 240, 255, ${dataArray[i]/255})`; 
+                        canvasCtx.fillRect(x, (canvas.height-bh)/2, bw, bh);
+                        x += bw + 1;
+                    }
+                }
+                draw();
+                mediaRecorder.start();
+                
+                timeRemaining = TIME_LIMIT_SECONDS;
+                document.getElementById('timer').textContent = formatTime(timeRemaining);
+                document.getElementById('timer').classList.remove('warning');
+                timerInterval = setInterval(updateTimer, 1000);
+                
+                document.getElementById('btnText').textContent = 'Stop Recording';
+                recordBtn.classList.add('recording');
+                document.getElementById('status').textContent = 'Live Audio Link Active...';
+                document.getElementById('status').style.color = 'var(--neon-red)';
+            } catch(e) { alert("Microphone access denied. Please allow permissions."); }
+        }
+
+        function stopAndProcessRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') { mediaRecorder.stop(); }
+            
+            if(audioCtx) audioCtx.close();
+            cancelAnimationFrame(animationId);
+            canvasCtx.clearRect(0,0,canvas.width,canvas.height);
+            if (audioStream) audioStream.getTracks().forEach(t => t.stop());
+            
+            clearInterval(timerInterval);
+            document.getElementById('timer').classList.remove('warning');
+            
+            recordBtn.classList.remove('recording');
+            recordBtn.disabled = true;
+            document.getElementById('status').textContent = 'Transmitting data...';
+            document.getElementById('status').style.color = 'var(--neon-blue)';
+        }
+
+        async function sendAudio(blob) {
+            const savingOverlay = document.getElementById('savingOverlay');
+            savingOverlay.style.display = 'flex';
+
+            const fd = new FormData();
+            fd.append('file', blob, 'answer.webm');
+            fd.append('questionText', interviewQuestions[currentQIndex]);
+            fd.append('questionId', currentQIndex + 1);
+            fd.append('sessionId', userData.sessionId);
+            fd.append('name', userData.name);
+            fd.append('email', userData.email);
+
+            try {
+                await fetch(AUDIO_WEBHOOK_URL, { method: 'POST', body: fd });
+                currentQIndex++;
+                
+                if(currentQIndex < interviewQuestions.length) {
+                    updateUI();
+                    document.getElementById('status').textContent = 'Awaiting Voice Input...';
+                    document.getElementById('status').style.color = 'var(--text-muted)';
+                } else {
+                    triggerFinalEmail();
+                }
+            } catch(e) {
+                document.getElementById('status').textContent = 'Upload failed. Retry?';
+                document.getElementById('status').style.color = 'var(--neon-red)';
+            } finally {
+                savingOverlay.style.display = 'none';
+
+                if(currentQIndex < interviewQuestions.length) {
+                    recordBtn.disabled = false;
+                    document.getElementById('btnText').textContent = 'Engage Microphone';
+                    timeRemaining = TIME_LIMIT_SECONDS;
+                    document.getElementById('timer').textContent = formatTime(timeRemaining);
+                }
+            }
+        }
+
+        document.getElementById('finishEarlyBtn').addEventListener('click', () => {
+            if (currentQIndex === 0 && (!mediaRecorder || mediaRecorder.state === 'inactive')) {
+                alert("No data recorded yet.");
+                return;
+            }
+            if (confirm("Terminate session and compile current data?")) {
+                if (mediaRecorder && mediaRecorder.state === 'recording') {
+                    stopAndProcessRecording();
+                    currentQIndex = interviewQuestions.length; 
+                } else {
+                    triggerFinalEmail();
+                }
+            }
+        });
+
+        async function triggerFinalEmail() {
+            document.getElementById('savingOverlay').style.display = 'flex';
+            document.querySelector('#savingOverlay h3').textContent = "Compiling Final Report...";
+            document.querySelector('#savingOverlay p').textContent = "Running AI analysis on session data...";
+
+            try {
+                await fetch(EMAIL_WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(userData)
+                });
+                
+                document.getElementById('savingOverlay').style.display = 'none';
+
+                // SUCCESS VIEW ARCHITECTURE USING TRANSITIONAL VARIABLE STRUCTURE
+                document.getElementById('interviewArea').innerHTML = `
+                    <div style="text-align:center; padding: 20px 0; animation: slideUp 0.6s ease-out;">
+                        <div class="success-icon">✓</div>
+                        <h3 style="color:var(--text-main); font-size:26px; font-weight:800; margin-bottom:10px;">Interview Completed! All the best! 🎉</h3>
+                        <p style="color:var(--text-muted); font-size:16px; line-height:1.6; margin-bottom:10px;">
+                            We have saved your responses. We will soon email your result to <br><b style="color:var(--neon-blue);">${userData.email}</b>.
+                        </p>
+                        
+                        <div style="margin-top: 35px; padding-top: 25px; border-top: 1px solid var(--glass-border);">
+                            <button id="resendEmailBtn" class="btn" style="background: rgba(255,255,255,0.05); color: var(--text-main); border: 1px solid var(--glass-border); box-shadow: none;">Resend Email Report</button>
+                        </div>
+                    </div>`;
+
+                const resendBtn = document.getElementById('resendEmailBtn');
+                if (resendBtn) {
+                    resendBtn.addEventListener('click', async () => {
+                        resendBtn.disabled = true;
+                        resendBtn.textContent = 'Transmitting...';
+                        
+                        try {
+                            await fetch(EMAIL_WEBHOOK_URL, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(userData)
+                            });
+                            
+                            resendBtn.textContent = 'Transmission Confirmed!';
+                            resendBtn.style.color = 'var(--success)';
+                            
+                            setTimeout(() => {
+                                resendBtn.disabled = false;
+                                resendBtn.textContent = 'Resend Email Report';
+                                resendBtn.style.color = 'var(--text-main)';
+                            }, 3000);
+
+                        } catch (err) {
+                            alert('Transmission error.');
+                            resendBtn.disabled = false;
+                            resendBtn.textContent = 'Resend Email Report';
+                        }
+                    });
+                }
+
+            } catch (e) {
+                document.getElementById('savingOverlay').style.display = 'none';
+                document.getElementById('status').textContent = 'Analysis complete, but email trigger failed.';
+            }
+        }
+    </script>
+</body>
+</html>
